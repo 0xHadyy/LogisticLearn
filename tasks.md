@@ -1,15 +1,17 @@
-- [x] generate dummy data
-- [ ] sigmoid function
-- [ ] Hypothesis
-- [ ] Loss function 
-- [ ] Basic prediction functionalities
-- [ ] Gradient Descent
-- [ ] train on Heart Disease data set 
+- [x] Generate dummy data
+- [x] Sigmoid function
+- [x] Stochastic Gradient Descent
+- [x] Mini-Batch Gradient Descent
+- [x] Loss function(cross entropy loss) 
+- [x] Hypothesis
+- [x] Basic prediction functionalities
+- [ ] Implement cross validaiton 
+- [ ] Train on Heart Disease data set 
 - [ ] Model evaluation(ROC curve, decision boundries)
 - [ ] Graphs (loss curve, ROC+ AUC, Coefficients vizualization)
-- [ ] implement L1
-- [ ] implement L2
-- [ ] compare L1 and L2 results 
-- [ ] statistical inference (mini study) 
-- [ ] sklearn benchmark
+- [ ] Implement L1 regularization(Lasso)
+- [ ] Implement L2 regularization(Ridge)
+- [ ] Compare L1 and L2 results 
+- [ ] Statistical inference (mini study) 
+- [ ] Sklearn benchmark
 
