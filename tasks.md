@@ -3,15 +3,27 @@
 - [x] Stochastic Gradient Descent
 - [x] Mini-Batch Gradient Descent
 - [x] Loss function(cross entropy loss) 
-- [x] Hypothesis
+- [x] Logistic Regression Hypothesis
 - [x] Basic prediction functionalities
-- [ ] Implement cross validaiton 
+- [x] Refactor code to class system
+- [x] Implement L2 regularization(Ridge)
+- [x] Implement L1 regularization(Lasso)
+- [ ] Elastic Net penalty
+- [x] Add inpute validators
+- [ ] Optimize Gradient Descent 
+- [x] Implement cross validaiton 
+- [ ] Stratified K-Fold CV
+- [ ] Add Logging & debugging
+- [x] Document basic implementation into Jupyter Notebook
 - [ ] Train on Heart Disease data set 
 - [ ] Model evaluation(ROC curve, decision boundries)
-- [ ] Graphs (loss curve, ROC+ AUC, Coefficients vizualization)
-- [ ] Implement L1 regularization(Lasso)
-- [ ] Implement L2 regularization(Ridge)
+- [ ] Graphs (loss curve, ROC+ AUC, Coefficients vizualization,decision boundary )
 - [ ] Compare L1 and L2 results 
-- [ ] Statistical inference (mini study) 
-- [ ] Sklearn benchmark
-
+- [ ] Hyperprameter sweep (λ)
+- [ ] Statistical inference (mini study and coefficient interpretation)
+- [ ] Sklearn benchmark 
+- [ ] Timing benchmark vs sklearn
+- [ ] Results summary
+- [ ] Improve README.md
+- [ ] Add Logistic Regression animation in the README.md
+- [ ] youtube video explanation 
