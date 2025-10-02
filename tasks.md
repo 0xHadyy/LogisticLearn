@@ -12,13 +12,15 @@
 - [x] Add inpute validators
 - [ ] Optimize Gradient Descent 
 - [x] Implement cross validaiton 
-- [ ] Stratified K-Fold CV
+- [x] Stratified K-Fold CV
+- [x] Implement Clone (deep copy of model/non recursive)
 - [ ] Add Logging & debugging
 - [x] Document basic implementation into Jupyter Notebook
 - [ ] Train on Heart Disease data set 
 - [ ] Model evaluation(ROC curve, decision boundries)
 - [ ] Graphs (loss curve, ROC+ AUC, Coefficients vizualization,decision boundary )
 - [ ] Compare L1 and L2 results 
+- [ ] Compare StratifiedCV and K-FoldCV results
 - [ ] Hyperprameter sweep (λ)
 - [ ] Statistical inference (mini study and coefficient interpretation)
 - [ ] Sklearn benchmark 
