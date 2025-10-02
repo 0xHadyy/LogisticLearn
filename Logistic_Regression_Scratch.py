@@ -1,5 +1,4 @@
 import numpy as np
-import inspect
 
 np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
@@ -170,6 +169,7 @@ def cross_validate(model, X, Y, seed, shuffle=True, cv=5):
         raise ValueError(f"Number of folds {cv} with {n} samples ")
     losses = []
     folds = K_folds(n, cv, shuffle, seed)
+    # folds = stratified_K_folds(n, cv, Y, shuffle, seed)
     for train_idx, test_idx in folds:
         # clone the model
         model_cv = clone(model)
@@ -194,11 +194,43 @@ def K_folds(n, K, shuffle, seed):
     print(fold_size)
     for i in range(K):
         start = i * fold_size
-        end = (i + 1) * fold_size
+        # when n %K !=0 the last fold takes all the reminder
+        end = (i + 1) * fold_size if i < K - 1 else len(n)
         test_idx = n[start:end]
         train_idx = np.concatenate([n[:start], n[end:]])
         folds.append((train_idx, test_idx))
 
+    return folds
+
+
+def stratified_K_folds(n, K, y, shuffle, seed):
+    # order each class
+    class_idx = {}
+    for class_label in np.unique(y):
+        # [0] to select the array in the np.where return tuple
+        class_idx[class_label] = np.where(y == class_label)[0]
+
+    folds = [([], []) for _ in range(K)]
+    # Create Strata
+    for class_label, idx in class_idx.items():
+        class_samples = len(idx)
+        if shuffle:
+            rng = np.random.default_rng(seed)
+            rng.shuffle(idx)
+
+        fold_size_class = class_samples // K
+        rest = class_samples % K
+
+        for i in range(K):
+            start = i * fold_size_class
+            end = (i + 1) * fold_size_class + (1 if i < rest else 0)
+            test_idx_class = idx[start:end]
+            train_idx_class = np.concatenate([idx[:start], idx[end:]])
+            # setdiff1d no need to extend for train idx
+            folds[i][0].extend(train_idx_class)
+            folds[i][1].extend(test_idx_class)
+
+    folds = [(np.array(train), np.array(test)) for train, test in folds]
     return folds
 
 
