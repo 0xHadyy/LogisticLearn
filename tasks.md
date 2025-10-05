@@ -13,6 +13,7 @@
 - [ ] Optimize Gradient Descent 
 - [x] Implement cross validaiton 
 - [x] Stratified K-Fold CV
+- [ ] GridSearch CV (hypeparameter tunning)
 - [x] Implement Clone (deep copy of model/non recursive)
 - [ ] Add Logging & debugging
 - [x] Document basic implementation into Jupyter Notebook
@@ -28,4 +29,5 @@
 - [ ] Results summary
 - [ ] Improve README.md
 - [ ] Add Logistic Regression animation in the README.md
-- [ ] youtube video explanation 
+- [ ] youtube video explanation (Logistic Regression technical implementation)
+- [ ] youtube video (Heart Disease data and Sklearn benchmark) 
