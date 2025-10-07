@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
@@ -7,7 +8,6 @@ class LogisticRegression:
     def __init__(
         self,
         penalty=None,
-        cv=5,
         lr=0.001,
         n_itr=2000,
         batch_size=None,
@@ -15,7 +15,6 @@ class LogisticRegression:
         C=1.0,
     ):
         self.lr = self._validate_positive(lr, "learning_rate")
-        self.cv = cv
         self.n_itr = int(self._validate_positive(n_itr, "n_itr"))
         self.batch_size = self._validate_positive(batch_size, "batch_size")
         self.penalty = self._validate_penalty(penalty)
@@ -93,25 +92,28 @@ class LogisticRegression:
                 X_GD = X[idx]
                 Y_GD = Y[idx].reshape(-1, 1)
 
+            p = self._sigmoid_function(X_GD)
+            gradient_cel = (X_GD.T @ (p - Y_GD)) / len(Y_GD)
+            gradient_intercept = np.sum(p - Y_GD) / len(Y_GD)
+
             if self.penalty == "l2":
-                regularization = (1 / (self.C * 2)) * self.beta
+                regularization = (1.0 / self.C) * self.beta
+                gradient_cel = gradient_cel + regularization
+                self.beta = self.beta - (self.lr * gradient_cel)
+
             elif self.penalty == "l1":
-                regularization = (1 / self.C) * np.sign(self.beta)
+                beta_temp = self.beta - (self.lr * gradient_cel)
+                threshold = self.lr * (1.0 / self.C)
+                self.beta = np.sign(beta_temp) * np.maximum(
+                    np.abs(beta_temp) - threshold, 0
+                )
+
             else:
-                regularization = 0
+                self.beta = self.beta - (self.lr * gradient_cel)
 
-            gradient_cel = (1 / len(Y_GD)) * (
-                X_GD.T @ (self._sigmoid_function(X_GD) - Y_GD)
-            ) + regularization
-
-            gradient_intercept = (1 / len(Y_GD)) * np.sum(
-                self._sigmoid_function(X_GD) - Y_GD
-            )
-            self.beta = self.beta - (self.lr * gradient_cel)
-            # print(self.beta)
             self.intercept = self.intercept - (self.lr * gradient_intercept)
 
-            loss = self.cross_entropy_loss(Y, X)
+            loss = self.cross_entropy_loss(Y_GD, X_GD)
             self.losses.append(loss)
 
             if abs(prev_loss - loss) < self.tol:
@@ -133,7 +135,8 @@ class LogisticRegression:
                 reg_loss = (1 / (self.C * 2)) * np.sum(self.beta**2)
             elif self.penalty == "l1":
                 reg_loss = (1 / self.C) * np.sum(np.abs(self.beta))
-        return cost_fn + reg_loss
+        loss = cost_fn + reg_loss
+        return loss
 
     def predict(self, X, threshold):
         predicted_probabilities = self._sigmoid_function(
@@ -143,7 +146,7 @@ class LogisticRegression:
         return predicted_class, predicted_probabilities
 
     def accuracy(self, Y, Y_pred):
-        accuracy = np.mean(Y_pred == Y)
+        accuracy = np.mean(Y_pred == Y.reshape(-1, 1))
         return accuracy
 
 
@@ -151,31 +154,43 @@ def clone(estimator):
     # Know the class of the estimator
     cls = estimator.__class__
     params = estimator.get_params()
-
     return cls(**params)
 
 
 def generate_dummy_data(n=1000, p=3, seed=1):
     np.random.seed(seed)
-
+    rng = np.random.RandomState(seed)
     X = np.random.randn(n, p)
-    # X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
-    coeff_true = np.array([2] * (p))  # (p,)
-    intercept_true = 3.0  #
-    P_x = 1 / (1 + np.exp(-(X @ coeff_true + intercept_true)))
+    noise = rng.normal(0, 0.2, size=X.shape)
+    X += noise
+    X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+    coeff_true = rng.uniform(-3, 2, size=p)
+    print("the true coeff are : ", coeff_true)
+    intercept_true = rng.uniform(-1, 1)
+    print("the true intercept :", intercept_true)
+    logit = X @ coeff_true + intercept_true
+    P_x = 1 / (1 + np.exp(-logit))
 
     response = np.random.binomial(1, P_x)
 
     return response, coeff_true, intercept_true, X
 
 
-def cross_validate(model, X, Y, seed=10, shuffle=True, cv=5):
+def pure_loss(model, X, Y):
+    P = model._sigmoid_function(X)
+    P = np.clip(P, 1e-15, 1 - 1e-15)
+    Y = Y.reshape(-1, 1)
+    loss_pure = -np.mean(Y * np.log(P) + (1 - Y) * np.log(1 - P))
+    return loss_pure
+
+
+def cross_validate(model, X, Y, seed=10, shuffle=True, cv=10):
     n = X.shape[0]
     if cv > n:
         raise ValueError(f"Number of folds {cv} with {n} samples ")
     losses = []
-    folds = K_folds(n, cv, shuffle, seed)
-    # folds = stratified_K_folds(n, cv, Y, shuffle, seed)
+    # folds = K_folds(n, cv, shuffle, seed)
+    folds = stratified_K_folds(n, cv, Y, shuffle, seed)
     for train_idx, test_idx in folds:
         # clone the model
         model_cv = clone(model)
@@ -185,6 +200,8 @@ def cross_validate(model, X, Y, seed=10, shuffle=True, cv=5):
 
         model_cv.fit(X_train, Y_train)
         loss = model_cv.cross_entropy_loss(Y_test, X_test)
+        if model_cv.penalty is not None:
+            loss = pure_loss(model_cv, X_test, Y_test)
         losses.append(loss)
 
     return losses, np.mean(losses)
@@ -255,6 +272,8 @@ def grid_searchCV(model, param_grid, cv, X, Y):
             model_CV = clone(model)
             model_CV.C = C_value
             model_CV.lr = lr_value
+            model_CV.n_itr = model.n_itr  # ensure same
+            model_CV.batch_size = model.batch_size  # ensure same
             print(f"the value of lr is :{lr_value} the value of C is : {C_value} ")
             loss, avg_loss = cross_validate(model_CV, X, Y, cv=cv)
             score_cv[(lr_value, C_value)] = avg_loss
@@ -270,13 +289,16 @@ def grid_searchCV(model, param_grid, cv, X, Y):
         #  print("---------")
 
     # Train the best model on the full data set
-    print("the best score is :", best_score)
     print("the best params are : ", best_params)
     if (best_estimator is not None) and (best_params is not None):
+        best_estimator = clone(model)
         best_estimator.lr = best_params["lr"]
         best_estimator.C = best_params["C"]
+        print(f"the params are : {best_estimator.lr} and {best_estimator.C}")
         beta, loss = best_estimator.fit(X, Y)
-        print(f"the best beta is {beta}")
+        _, avg_loss = cross_validate(best_estimator, X, Y, seed=2, shuffle=True, cv=10)
+        print(f"the best beta is {best_estimator.beta}")
+        print("the avg loss right after fitting is : ", avg_loss)
     return {
         "best_score": best_score,
         "best_model": best_estimator,
@@ -285,26 +307,60 @@ def grid_searchCV(model, param_grid, cv, X, Y):
     }
 
 
-Y, beta_true, intercept_true, X = generate_dummy_data(n=300, p=3, seed=24)
+Y, beta_true, intercept_true, X = generate_dummy_data(n=3000, p=6, seed=2)
 
-model = LogisticRegression(lr=0.1, n_itr=900, batch_size=30, C=0.01, penalty=None)
-beta, loss = model.fit(X, Y)
-losses, avg_loss = cross_validate(model, X, Y, seed=10, shuffle=True, cv=10)
-param_grid = {
-    "lr_values": [0.1, 0.01, 0.001],
-    "C_values": [0.01, 0.1, 0.2, 0.3],
-}
-score = grid_searchCV(model, param_grid, 10, X, Y)
-modelCV = score["best_model"]
-# beta, loss_train = model.fit(X, Y)
-# print(beta)
-
-# model = score["best_model"]
+model = LogisticRegression(lr=0.1, n_itr=100000, batch_size=None, penalty=None)
 
 
-print(f"the best (base model) betas are : {beta}")
-print(f"the base model avg loss is : {avg_loss}")
+beta, _ = model.fit(X, Y)
+losses, avg_loss = cross_validate(model, X, Y, seed=2, shuffle=True, cv=10)
 # print(f"the best model avg_loss is {avg_loss}")
-# predicted_class_cl, predicted_prob_cl = model.predict(X, 0.5)
-# accuracy_class = model.accuracy(Y, predicted_class_cl)
-# print(accuracy_class)
+predicted_class_cl, predicted_prob_cl = model.predict(X, 0.5)
+accuracy_class = model.accuracy(Y, predicted_class_cl)
+print("=============Base model-======= ")
+print("the avg loss", avg_loss)
+print("the estimated coeffi", beta)
+print("the estimated intercept is ", model.intercept)
+print("the accuracy is :", accuracy_class)
+print(model.get_params())
+
+model_l2 = LogisticRegression(
+    lr=0.01, n_itr=100000, batch_size=None, penalty="l2", C=10
+)
+beta_l2, _ = model_l2.fit(X, Y)
+_, avg_loss_l2 = cross_validate(model_l2, X, Y, seed=2, shuffle=True, cv=10)
+predicted_class_l2, predicted_prob_l2 = model_l2.predict(X, 0.5)
+accuracy_class_l2 = model_l2.accuracy(Y, predicted_class_l2)
+print("=============L2 model-======= ")
+print("the avg loss ", avg_loss_l2)
+print("the estimated coeffi", beta_l2)
+print("the estimated intercept is ", model_l2.intercept)
+print("the accuracy is :", accuracy_class_l2)
+print(model_l2.get_params())
+
+
+model_l1 = LogisticRegression(lr=0.01, n_itr=10000, batch_size=None, penalty="l1", C=10)
+beta_l1, _ = model_l1.fit(X, Y)
+_, avg_loss_l1 = cross_validate(model_l1, X, Y, seed=2, shuffle=True, cv=10)
+predicted_class_l1, predicted_prob_l1 = model_l1.predict(X, 0.5)
+accuracy_class_l1 = model_l1.accuracy(Y, predicted_class_l1)
+print("=============L1 model-======= ")
+print("the avg loss ", avg_loss_l1)
+print("the estimated coeffi", beta_l1)
+print("the estimated intercept is ", model_l1.intercept)
+print("the accuracy is :", accuracy_class_l1)
+print(model_l1.get_params())
+
+param_grid = {
+    "lr_values": [0.01, 0.001, 0.1, 0.0001],
+    "C_values": [0.01, 0.3, 10, 5, 0.1],
+}
+# score = grid_searchCV(model, param_grid, 10, X, Y)
+# modelCV = score["best_model"]
+
+# losses_best, avg_loss_best = cross_validate(modelCV, X, Y, seed=2, shuffle=True, cv=10)
+# predicted_class_best, predicted_prob_best = modelCV.predict(X, 0.5)
+# accuracy_best = modelCV.accuracy(Y, predicted_class_best)
+# print("========gridsearch model=====")
+# print(f"the avg_loss for the grid search model i {avg_loss_best}")
+# print("the accuracy of gridsearch fitted model is :", accuracy_best)
