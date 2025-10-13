@@ -1,5 +1,7 @@
 import numpy as np
-import copy
+from sklearn import datasets
+from sklearn.metrics import f1_score
+
 
 np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
@@ -68,8 +70,9 @@ class LogisticRegression:
 
     def _sigmoid_function(self, X):
         logit = X @ self.beta + self.intercept
+        # print(f"the value of beta is {self.beta} ")
+        # print(f"the shape of X is :{X.shape}, beta :{self.beta.shape}")
         logit = np.clip(logit, -500, 500)
-
         P_x = np.where(
             logit >= 0, 1 / (1 + np.exp(-logit)), np.exp(logit) / (1 + np.exp(logit))
         )
@@ -99,6 +102,9 @@ class LogisticRegression:
             if self.penalty == "l2":
                 regularization = (1.0 / self.C) * self.beta
                 gradient_cel = gradient_cel + regularization
+                grad_norm = np.linalg.norm(gradient_cel)
+                if grad_norm > 1e3:
+                    gradient_cel = gradient_cel / grad_norm * 1e3
                 self.beta = self.beta - (self.lr * gradient_cel)
 
             elif self.penalty == "l1":
@@ -116,6 +122,7 @@ class LogisticRegression:
             loss = self.cross_entropy_loss(Y_GD, X_GD)
             self.losses.append(loss)
 
+            # early break
             if abs(prev_loss - loss) < self.tol:
                 break
             prev_loss = loss
@@ -127,21 +134,28 @@ class LogisticRegression:
         P_x = self._sigmoid_function(X)
         eps = 1e-15
 
+        # Clipping small values
         P_x = np.clip(P_x, eps, 1 - eps)
         reg_loss = 0
         cost_fn = -np.mean(Y * np.log(P_x) + (1 - Y) * np.log(1 - P_x))
+
         if self.beta is not None:
             if self.penalty == "l2":
                 reg_loss = (1 / (self.C * 2)) * np.sum(self.beta**2)
             elif self.penalty == "l1":
                 reg_loss = (1 / self.C) * np.sum(np.abs(self.beta))
+
         loss = cost_fn + reg_loss
+
         return loss
 
     def predict(self, X, threshold):
+        # use unseen data X
         predicted_probabilities = self._sigmoid_function(
             X
         )  # P(Y_hat) while Y_hat = Xbeta
+        # print(f"the predictd probability is {predicted_probabilities}")
+
         predicted_class = (predicted_probabilities >= threshold).astype(int)
         return predicted_class, predicted_probabilities
 
@@ -157,9 +171,38 @@ def clone(estimator):
     return cls(**params)
 
 
+def generate_challenging_data(n=1000, p=20, seed=1, noise_level=0.3):
+    np.random.seed(seed)
+
+    # Create correlated features (multicollinearity)
+    X = np.random.randn(n, p)
+    # Add correlation between features
+    for i in range(1, p):
+        X[:, i] += 0.7 * X[:, i - 1]  # High correlation
+
+    # True model: only first 5 features matter
+    coeff_true = np.zeros(p)
+    coeff_true[:5] = np.random.uniform(-2, 2, 5)
+    coeff_true[5:] = 0  # Truly sparse
+
+    print("the true coeff are : ", coeff_true)
+    intercept_true = np.random.uniform(-1, 1)
+
+    print("the true intercept :", intercept_true)
+    logit = X @ coeff_true + intercept_true
+    # Add more noise to make it harder
+    logit += np.random.normal(0, noise_level, n)
+
+    P_x = 1 / (1 + np.exp(-logit))
+    response = np.random.binomial(1, P_x)
+
+    return response, coeff_true, intercept_true, X
+
+
 def generate_dummy_data(n=1000, p=3, seed=1):
     np.random.seed(seed)
     rng = np.random.RandomState(seed)
+
     X = np.random.randn(n, p)
     noise = rng.normal(0, 0.2, size=X.shape)
     X += noise
@@ -168,6 +211,7 @@ def generate_dummy_data(n=1000, p=3, seed=1):
     print("the true coeff are : ", coeff_true)
     intercept_true = rng.uniform(-1, 1)
     print("the true intercept :", intercept_true)
+
     logit = X @ coeff_true + intercept_true
     P_x = 1 / (1 + np.exp(-logit))
 
@@ -190,7 +234,7 @@ def cross_validate(model, X, Y, seed=10, shuffle=True, cv=10):
         raise ValueError(f"Number of folds {cv} with {n} samples ")
     losses = []
     # folds = K_folds(n, cv, shuffle, seed)
-    folds = stratified_K_folds(n, cv, Y, shuffle, seed)
+    folds = stratified_K_folds(cv, Y, shuffle, seed)
     for train_idx, test_idx in folds:
         # clone the model
         model_cv = clone(model)
@@ -209,11 +253,14 @@ def cross_validate(model, X, Y, seed=10, shuffle=True, cv=10):
 
 def K_folds(n, K, shuffle, seed):
     n = np.arange(n)
+
     if shuffle:
         rng = np.random.default_rng(seed)
         rng.shuffle(n)
+
     folds = []
     fold_size = len(n) // K
+
     for i in range(K):
         start = i * fold_size
         # when n %K !=0 the last fold takes all the reminder
@@ -225,7 +272,7 @@ def K_folds(n, K, shuffle, seed):
     return folds
 
 
-def stratified_K_folds(n, K, y, shuffle, seed):
+def stratified_K_folds(K, y, shuffle, seed):
     # order each class
     class_idx = {}
     for class_label in np.unique(y):
@@ -243,12 +290,14 @@ def stratified_K_folds(n, K, y, shuffle, seed):
         fold_size_class = class_samples // K
         rest = class_samples % K
 
+        # Splitting each class strata into train/test fold
         for i in range(K):
             start = i * fold_size_class
             end = (i + 1) * fold_size_class + (1 if i < rest else 0)
             test_idx_class = idx[start:end]
             train_idx_class = np.concatenate([idx[:start], idx[end:]])
             # setdiff1d no need to extend for train idx
+            # collecting all the test folds from each strat into => THE TEST FOLD
             folds[i][0].extend(train_idx_class)
             folds[i][1].extend(test_idx_class)
 
@@ -259,6 +308,7 @@ def stratified_K_folds(n, K, y, shuffle, seed):
 def grid_searchCV(model, param_grid, cv, X, Y):
     lr_values = param_grid.get("lr_values")
     C_values = param_grid.get("C_values")
+
     print(lr_values)
     print(C_values)
 
@@ -272,33 +322,33 @@ def grid_searchCV(model, param_grid, cv, X, Y):
             model_CV = clone(model)
             model_CV.C = C_value
             model_CV.lr = lr_value
-            model_CV.n_itr = model.n_itr  # ensure same
-            model_CV.batch_size = model.batch_size  # ensure same
-            print(f"the value of lr is :{lr_value} the value of C is : {C_value} ")
+            model_CV.n_itr = model.n_itr
+            model_CV.batch_size = model.batch_size
+            # print(f"the value of lr is :{lr_value} the value of C is : {C_value} ")
             loss, avg_loss = cross_validate(model_CV, X, Y, cv=cv)
+
             score_cv[(lr_value, C_value)] = avg_loss
-            print(f"{avg_loss}< {best_score}")
+            # print(f"{avg_loss}< {best_score}")
             if avg_loss < best_score:
                 best_score = avg_loss
                 best_estimator = model_CV
                 best_params = model_CV.get_params()
-                print(best_params)
+                # print(best_params)
         # print(f"for C={C_value} and lr={lr_value} the avg loss of the model is ")
 
         #  print(avg_loss)
         #  print("---------")
 
     # Train the best model on the full data set
+    print("========gridsearch model=====")
     print("the best params are : ", best_params)
     if (best_estimator is not None) and (best_params is not None):
-        best_estimator = clone(model)
-        best_estimator.lr = best_params["lr"]
-        best_estimator.C = best_params["C"]
         print(f"the params are : {best_estimator.lr} and {best_estimator.C}")
-        beta, loss = best_estimator.fit(X, Y)
         _, avg_loss = cross_validate(best_estimator, X, Y, seed=2, shuffle=True, cv=10)
+        best_estimator.fit(X, Y)
         print(f"the best beta is {best_estimator.beta}")
         print("the avg loss right after fitting is : ", avg_loss)
+
     return {
         "best_score": best_score,
         "best_model": best_estimator,
@@ -307,14 +357,24 @@ def grid_searchCV(model, param_grid, cv, X, Y):
     }
 
 
-Y, beta_true, intercept_true, X = generate_dummy_data(n=3000, p=6, seed=2)
+def load_breast_cancer():
+    data = datasets.load_breast_cancer()
+    X, y = data.data, data.target
+    # Manual standardization
+    X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+    return X, y, data.feature_names
 
-model = LogisticRegression(lr=0.1, n_itr=100000, batch_size=None, penalty=None)
+
+X, Y, name = load_breast_cancer()
+# Y, beta_true, intercept_true, X = generate_challenging_data(n=600, p=6, seed=2)
+
+
+model = LogisticRegression(lr=0.1, n_itr=10000, batch_size=50, penalty=None)
 
 
 beta, _ = model.fit(X, Y)
 losses, avg_loss = cross_validate(model, X, Y, seed=2, shuffle=True, cv=10)
-# print(f"the best model avg_loss is {avg_loss}")
+print(f"the best model avg_loss is {avg_loss}")
 predicted_class_cl, predicted_prob_cl = model.predict(X, 0.5)
 accuracy_class = model.accuracy(Y, predicted_class_cl)
 print("=============Base model-======= ")
@@ -324,9 +384,7 @@ print("the estimated intercept is ", model.intercept)
 print("the accuracy is :", accuracy_class)
 print(model.get_params())
 
-model_l2 = LogisticRegression(
-    lr=0.01, n_itr=100000, batch_size=None, penalty="l2", C=10
-)
+model_l2 = LogisticRegression(lr=0.1, n_itr=10000, batch_size=50, penalty="l2", C=10)
 beta_l2, _ = model_l2.fit(X, Y)
 _, avg_loss_l2 = cross_validate(model_l2, X, Y, seed=2, shuffle=True, cv=10)
 predicted_class_l2, predicted_prob_l2 = model_l2.predict(X, 0.5)
@@ -339,7 +397,7 @@ print("the accuracy is :", accuracy_class_l2)
 print(model_l2.get_params())
 
 
-model_l1 = LogisticRegression(lr=0.01, n_itr=10000, batch_size=None, penalty="l1", C=10)
+model_l1 = LogisticRegression(lr=0.1, n_itr=10000, batch_size=50, penalty="l1", C=10)
 beta_l1, _ = model_l1.fit(X, Y)
 _, avg_loss_l1 = cross_validate(model_l1, X, Y, seed=2, shuffle=True, cv=10)
 predicted_class_l1, predicted_prob_l1 = model_l1.predict(X, 0.5)
@@ -352,15 +410,14 @@ print("the accuracy is :", accuracy_class_l1)
 print(model_l1.get_params())
 
 param_grid = {
-    "lr_values": [0.01, 0.001, 0.1, 0.0001],
-    "C_values": [0.01, 0.3, 10, 5, 0.1],
+    "lr_values": [0.01, 0.001, 0.1],
+    "C_values": [0.01, 0.1, 1, 10, 100, 1000],
 }
-# score = grid_searchCV(model, param_grid, 10, X, Y)
-# modelCV = score["best_model"]
-
-# losses_best, avg_loss_best = cross_validate(modelCV, X, Y, seed=2, shuffle=True, cv=10)
-# predicted_class_best, predicted_prob_best = modelCV.predict(X, 0.5)
-# accuracy_best = modelCV.accuracy(Y, predicted_class_best)
-# print("========gridsearch model=====")
-# print(f"the avg_loss for the grid search model i {avg_loss_best}")
-# print("the accuracy of gridsearch fitted model is :", accuracy_best)
+score = grid_searchCV(model_l2, param_grid, 10, X, Y)
+modelCV = score["best_model"]
+print(score["best_params"])
+losses_best, avg_loss_best = cross_validate(modelCV, X, Y, seed=2, shuffle=True, cv=10)
+predicted_class_best, predicted_prob_best = modelCV.predict(X, 0.5)
+accuracy_best = modelCV.accuracy(Y, predicted_class_best)
+print(f"the avg_loss for the grid search model i {avg_loss_best}")
+print("the accuracy of gridsearch fitted model is :", accuracy_best)

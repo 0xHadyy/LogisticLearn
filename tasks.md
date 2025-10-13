@@ -8,15 +8,19 @@
 - [x] Refactor code to class system
 - [x] Implement L2 regularization(Ridge)
 - [x] Implement L1 regularization(Lasso)
+- [x] implement proximal Lasso 
 - [ ] Elastic Net penalty
 - [x] Add inpute validators
 - [ ] Optimize Gradient Descent 
+- [ ] Newton-Raphson Method
 - [x] Implement cross validaiton 
 - [x] Stratified K-Fold CV
-- [ ] GridSearch CV (hypeparameter tunning)
+- [x] GridSearch CV (hypeparameter and learning rate tunning)
 - [x] Implement Clone (deep copy of model/non recursive)
-- [ ] Add Logging & debugging
+- [x] Add Logging & debugging
 - [x] Document basic implementation into Jupyter Notebook
+- [x] Validate The implementation on sklearn "breast_cancer"
+- [ ] Add differnt metrics for Cross-Validation
 - [ ] Train on Heart Disease data set 
 - [ ] Model evaluation(ROC curve, decision boundries)
 - [ ] Graphs (loss curve, ROC+ AUC, Coefficients vizualization,decision boundary )
@@ -24,7 +28,7 @@
 - [ ] Compare StratifiedCV and K-FoldCV results
 - [ ] Hyperprameter sweep (λ)
 - [ ] Statistical inference (mini study and coefficient interpretation)
-- [ ] Sklearn benchmark 
+- [ ] Vs-Sklearn benchmark 
 - [ ] Timing benchmark vs sklearn
 - [ ] Results summary
 - [ ] Improve README.md
