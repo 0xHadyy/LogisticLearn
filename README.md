@@ -1,24 +1,36 @@
 # Logistic Regression from Scratch (Math + Numpy) 
 
-This repository is my full implementaton of **Binary Logistic Regression** using only **NumPy** :
+[![PDF Notes](https://img.shields.io/badge/PDF-Theory-blue)](docs%20and%20theory/Logistic%20Regression.pdf)
+[![Notebook](https://img.shields.io/badge/Jupyter-Notebook-orange)](notebooks/Logistic_Regression_Scratch.ipynb)
+
+This repository is my full implementation of **Binary Logistic Regression** using only **NumPy** :
+
+<p align="center">
+<img src="https://s12.gifyu.com/images/b3z3E.gif" width= "600" >
+</p>
+
+
 
 - Full implementation of logistic regression 
 - **L1(Lasso)** & **L2(Ridge)** Regularization 
-- **cross-validaiton** and **hyperparameter tuning** From Scratch 
+- **cross-validation** and **hyperparameter tuning** From Scratch 
 - Step-by-Step **Jupyter Notebook** with explanations
 - **PDF documentation** of Logistic Regression math and theory
-- Benchmark against **sickit-learn**- 
+- Benchmark against **scikit-learn**
 
-All as part of my journey studying **Machine Learning.**
 
-## 📋 Table of Contents
+
+
+
+## 📋Table of Contents
 1. [Topics Covered](#topics-covered)
 2. [Implementation Details](#implementation-details)
 3. [Results](#results)
 4. [How to Run](#how-to-run)
-5. [References](#references)
+5. [Video Explanation](#video-explanation)
+6. [References](#references)
 
-## 📚 Topics Covered
+## 📚Topics Covered
 - **Core Model**
   - Logistic (Sigmoid) Function
   - Log-Likelihood and Cross-Entropy Loss
@@ -37,14 +49,14 @@ All as part of my journey studying **Machine Learning.**
   - Breast Cancer Prediction
   - Benchmark vs `scikit-learn` LogisticRegression
 
-## ⚙️ Implementation Details
+## ⚙️Implementation Details
 - Fully object-oriented design (class-based)
 - Implements cloning, model saving, and detailed logging
 - Custom `GridSearchCV` and `CrossValidation` implementations
 - Proximal operator for L1 regularization
 - Supports multiple optimizers and convergence criteria
 
-## 📊 Results 
+## 📊Results 
 
 - Comparison between custom implementation and scikit-learn
 - L1 vs L2 Regularization Coefficient Analysis
@@ -66,14 +78,20 @@ pip install -r requirements.txt
 # Run the main notebook
 jupyter notebook Logistic_Regression.ipynb
 
-- Steps to run the code and benchmark(add later)
+```
 
+## 🎥Video Eplanation 
+I also created a video walkthrough explaining :
+- The math and intution behind Logistic Regression 
+- How to implement it from scratch in Numpy
+- Regularization, cross-validation and grid search
 
-## 📚 References
+## 📚References
 
 🔗 My Machine Leanring Notes GitHub Repo: [Isl-python](https://github.com/0xHadyy/Linear-Regression-From-Scratch)
 
 📘 An Introduction to Statistical Learning — James, Witten, Hastie, Tibshirani
 
 📗 The Elements of Statistical Learning — Hastie, Tibshirani, Friedman
+
 
