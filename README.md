@@ -1,8 +1,8 @@
 # Logistic Regression from Scratch (Math + Numpy) 
 
 [![PDF Notes](https://img.shields.io/badge/PDF-Theory-blue)](docs%20and%20theory/Logistic%20Regression.pdf)
-[![Notebook](https://img.shields.io/badge/Jupyter-Notebook-orange)](notebooks/Logistic_Regression_Scratch.ipynb)
-
+[![Notebook Implementation](https://img.shields.io/badge/Jupyter-Notebook-orange)](notebooks/Logistic_Regression_Scratch.ipynb)
+[![YouTube Tutorial](https://img.shields.io/badge/YouTube-Tutorial-red)](https://youtu.be/fQFKdAuTSZ8)
 This repository is my full implementation of **Binary Logistic Regression** using only **NumPy** :
 
 <p align="center">
